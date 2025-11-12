@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR DASH</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide-icons"></script>
+    
+    <!-- Load ApexCharts for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <!-- Load Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* Define custom fonts and colors */
+        :root {
+            --color-primary: #004D40; /* Deep Forest Green */
+            --color-accent: #C27C36;  /* Warm Bronze */
+            --color-secondary: #69A197; /* Muted Seafoam */
+            --color-background-light: #F4F7F6;
+            --color-card-light: #FFFFFF;
+        }
+
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-background-light);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Dark Mode styles */
+        .dark {
+            --color-primary: #A2E0C4;
+            --color-accent: #D9A054;
+            --color-background-dark: #121212;
+            --color-card-dark: #1F1F1F;
+            background-color: var(--color-background-dark);
+            color: #E0E0E0;
+        }
+        .dark .text-gray-900 { color: #E0E0E0; }
+        .dark .text-gray-500 { color: #B0B0B0; }
+        .dark .bg-white { background-color: var(--color-card-dark); }
+        .dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.1), 0 4px 6px -2px rgba(255, 255, 255, 0.05); }
+        
+        .nav-link {
+            transition: all 0.2s;
+            cursor: pointer;
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        .nav-link.active {
+            background-color: var(--color-primary);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 77, 64, 0.5), 0 2px 4px -2px rgba(0, 77, 64, 0.5);
+        }
+        .dark .nav-link.active {
+            background-color: var(--color-accent);
+            color: #121212;
+            box-shadow: 0 4px 6px -1px rgba(217, 160, 84, 0.5), 0 2px 4px -2px rgba(217, 160, 84, 0.5);
+        }
+
+        .chart-container {
+            min-height: 300px; /* Ensure charts have space */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Container -->
+    <div id="app" class="min-h-screen flex transition-colors duration-300">
+        
+        <!-- Sidebar Navigation (Desktop) -->
+        <aside class="w-64 bg-white dark:bg-gray-900 shadow-xl p-4 hidden md:block transition-colors duration-300">
+            <div class="logo text-center py-6 border-b border-gray-200 dark:border-gray-700">
+                <h1 class="text-3xl font-extrabold text-[--color-primary] dark:text-[--color-accent] tracking-wider font-montserrat">TruInx</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">HR DASHBOARD</p>
+            </div>
+            
+            <nav class="mt-8 space-y-2">
+                <!-- Admin Links -->
+                <div id="adminNav" class="space-y-2 hidden">
+                    <a data-page="dashboard" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i> Dashboard
+                    </a>
+                    <a data-page="payroll" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i data-lucide="wallet" class="w-5 h-5 mr-3"></i> Payroll
+                    </a>
+                    <a data-page="reports" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5 mr-3"></i> Reports
+                    </a>
+                    <a data-page="employeeInfo" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i data-lucide="user-cog" class="w-5 h-5 mr-3"></i> Employee Details
+                    </a>
+                    <a data-page="settings" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i data-lucide="settings" class="w-5 h-5 mr-3"></i> Rewards
+                    </a>
+                </div>
+                
+                <!-- Employee Link -->
+                <div id="employeeNav" class="space-y-2 hidden">
+                    <a data-page="employee" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i data-lucide="user" class="w-5 h-5 mr-3"></i> My Attendance
+                    </a>
+                </div>
+            </nav>
+
+            <!-- Mode Switchers (Admin only) -->
+            <div id="modeSwitchers" class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Innovation Mode</span>
+                    <label class="switch relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" id="innovationToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer checked:bg-green-500 checked:right-0 checked:border-green-500">
+                        <div class="toggle-track block bg-gray-300 h-6 rounded-full cursor-pointer"></div>
+                    </label>
+                </div>
+                <button id="darkModeToggle" class="w-full flex items-center justify-center p-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    <i data-lucide="moon" class="w-5 h-5 mr-2"></i> Toggle Dark Mode
+                </button>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            
+            <!-- Top Bar for Mobile -->
+            <header class="md:hidden flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-xl shadow-md mb-4">
+                <h1 class="text-2xl font-extrabold text-[--color-primary] dark:text-[--color-accent] font-montserrat">GeoMint</h1>
+                <button id="mobileMenuBtn" class="text-gray-700 dark:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </header>
+
+            <!-- Mobile Navigation Overlay (Hidden by default) -->
+            <div id="mobileNavOverlay" class="fixed inset-0 z-40 bg-black bg-opacity-50 hidden md:hidden">
+                <div id="mobileNav" class="w-64 bg-white dark:bg-gray-900 min-h-full p-4 transition-transform duration-300 transform -translate-x-full">
+                    <div class="flex justify-end mb-8">
+                        <button id="closeMobileNavBtn" class="text-gray-700 dark:text-gray-300 p-2">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                    <!-- Navigation links replicated here -->
+                    <nav class="space-y-2">
+                        <!-- Admin Links (Mobile) -->
+                        <div id="adminNavMobile" class="space-y-2 hidden">
+                            <a data-page="dashboard" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i> Dashboard
+                            </a>
+                            <a data-page="payroll" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i data-lucide="wallet" class="w-5 h-5 mr-3"></i> Payroll
+                            </a>
+                            <a data-page="reports" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i data-lucide="bar-chart-3" class="w-5 h-5 mr-3"></i> Reports
+                            </a>
+                            <a data-page="employeeInfo" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i data-lucide="user-cog" class="w-5 h-5 mr-3"></i> Employee Details
+                            </a>
+                            <a data-page="settings" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i data-lucide="settings" class="w-5 h-5 mr-3"></i> Settings
+                            </a>
+                        </div>
+                        
+                        <!-- Employee Link (Mobile) -->
+                        <div id="employeeNavMobile" class="space-y-2 hidden">
+                            <a data-page="employee" class="nav-link flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i data-lucide="user" class="w-5 h-5 mr-3"></i> My Attendance
+                            </a>
+                        </div>
+                        
+                        <!-- Mode Switchers (Mobile) -->
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                            <button id="darkModeToggleMobile" class="w-full flex items-center justify-center p-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                <i data-lucide="moon" class="w-5 h-5 mr-2"></i> Toggle Dark Mode
+                            </button>
+                        </div>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Page Content -->
+            <div id="pageContent">
+                <!-- Content will be injected here -->
+                <div class="flex justify-center items-center h-[50vh] text-gray-500 dark:text-gray-400">
+                    Loading Application...
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Global Modal for Anomaly Alert/Confirmation -->
+    <div id="globalModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="modalTitle" class="text-2xl font-bold text-red-600 dark:text-red-400">Anomaly Detected</h3>
+                <button id="modalCloseBtn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <p id="modalMessage" class="text-gray-700 dark:text-gray-300 mb-6">
+                A potential anomaly has been flagged by the GeoMint AI system. An abnormal deviation from the expected check-in/out time or location has been noted. Please verify your action.
+            </p>
+            <button id="modalConfirmBtn" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition duration-200">
+                Acknowledge & Override
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Use a self-invoking function to avoid polluting the global scope
+        (() => {
+            // --- State Management ---
+            let state = {
+                view: 'admin', // 'admin' or 'employee'
+                page: 'dashboard', // 'dashboard', 'payroll', 'reports', 'settings', 'employee', 'employeeInfo'
+                isDarkMode: false,
+                isInnovationMode: false,
+                isClockedIn: false,
+                employeeTimer: null,
+                currentEmployeeTime: '08:00 AM',
+                totalHoursToday: '0.00h',
+                anomalyModalOpen: false,
+                anomalyType: 'Location Drift', // or 'Time Deviation'
+            };
+
+            // --- DOM Element Mapping ---
+            const dom = {
+                app: document.getElementById('app'),
+                pageContent: document.getElementById('pageContent'),
+                adminNav: document.getElementById('adminNav'),
+                employeeNav: document.getElementById('employeeNav'),
+                adminNavMobile: document.getElementById('adminNavMobile'),
+                employeeNavMobile: document.getElementById('employeeNavMobile'),
+                modeSwitchers: document.getElementById('modeSwitchers'),
+                mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+                mobileNavOverlay: document.getElementById('mobileNavOverlay'),
+                mobileNav: document.getElementById('mobileNav'),
+                closeMobileNavBtn: document.getElementById('closeMobileNavBtn'),
+                innovationToggle: document.getElementById('innovationToggle'),
+                darkModeToggle: document.getElementById('darkModeToggle'),
+                darkModeToggleMobile: document.getElementById('darkModeToggleMobile'),
+                globalModal: document.getElementById('globalModal'),
+                modalCloseBtn: document.getElementById('modalCloseBtn'),
+                modalTitle: document.getElementById('modalTitle'),
+                modalMessage: document.getElementById('modalMessage'),
+                modalConfirmBtn: document.getElementById('modalConfirmBtn'),
+                clockActionBtn: null, // Will be set on employee view render
+            };
+
+            // --- Utility Functions ---
+
+            /**
+             * Updates the application state and triggers a full UI render.
+             * @param {object} newState - The partial state object to merge.
+             */
+            function setState(newState) {
+                state = { ...state, ...newState };
+                renderUI();
+            }
+
+            /**
+             * Renders Lucide icons across the whole document.
+             */
+            function renderIcons() {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }
+            
+            /**
+             * Simulates a time update for the employee view.
+             */
+            function updateEmployeeTime() {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
+                const timeString = `${displayHours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+                
+                // Simulate total hours for demo purposes
+                let totalHours = 8.5 + Math.random() * 0.5;
+                if (state.isClockedIn) {
+                    // Placeholder for a more complex calculation
+                    totalHours = parseFloat(state.totalHoursToday) + 0.01;
+                } else {
+                    totalHours = parseFloat((Math.random() * 8).toFixed(2));
+                }
+
+                setState({ 
+                    currentEmployeeTime: timeString,
+                    totalHoursToday: totalHours.toFixed(2) + 'h',
+                });
+            }
+
+            /**
+             * Starts or stops the employee view time update interval.
+             */
+            function startEmployeeViewTimer() {
+                if (state.employeeTimer) {
+                    clearInterval(state.employeeTimer);
+                }
+                updateEmployeeTime(); // Initial run
+                state.employeeTimer = setInterval(updateEmployeeTime, 5000); // Update every 5 seconds
+            }
+
+            // --- Modal Handlers ---
+
+            function showAnomalyModal(type = 'Location Drift') {
+                const title = type === 'Location Drift' ? 'Location Anomaly' : 'Time Deviation Alert';
+                const message = type === 'Location Drift' 
+                    ? 'A significant deviation from the registered work location has been flagged. Please verify your position or contact HR.'
+                    : 'Your clock-in/out time is outside of your scheduled window. Please confirm this action to proceed.';
+
+                dom.modalTitle.textContent = title;
+                dom.modalTitle.classList.remove('text-red-600', 'dark:text-red-400', 'text-amber-600', 'dark:text-amber-400');
+                dom.modalTitle.classList.add(type === 'Location Drift' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400');
+                dom.modalMessage.textContent = message;
+
+                dom.globalModal.classList.remove('hidden');
+                setTimeout(() => {
+                    dom.globalModal.classList.remove('opacity-0');
+                    dom.globalModal.querySelector('div').classList.remove('scale-95');
+                }, 10);
+                setState({ anomalyModalOpen: true, anomalyType: type });
+            }
+
+            function closeModal() {
+                dom.globalModal.classList.add('opacity-0');
+                dom.globalModal.querySelector('div').classList.add('scale-95');
+                setTimeout(() => {
+                    dom.globalModal.classList.add('hidden');
+                }, 300);
+                setState({ anomalyModalOpen: false });
+            }
+            
+            /**
+             * Simulates the clock-in/out action, with a chance of an anomaly.
+             */
+            function handleClockAction() {
+                if (state.anomalyModalOpen) {
+                    // If modal is open, confirm/override the anomaly
+                    console.log(`Anomaly Overridden: ${state.anomalyType}`);
+                    closeModal();
+                    setState({ isClockedIn: !state.isClockedIn });
+                    
+                    if (state.isClockedIn) {
+                        startEmployeeViewTimer();
+                    } else {
+                        clearInterval(state.employeeTimer);
+                        setState({ totalHoursToday: '0.00h' });
+                    }
+                    return;
+                }
+
+                // 20% chance of an anomaly on clock-in/out
+                if (Math.random() < 0.2) {
+                    const anomalyType = Math.random() < 0.5 ? 'Location Drift' : 'Time Deviation';
+                    showAnomalyModal(anomalyType);
+                } else {
+                    setState({ isClockedIn: !state.isClockedIn });
+
+                    if (state.isClockedIn) {
+                        startEmployeeViewTimer();
+                    } else {
+                        clearInterval(state.employeeTimer);
+                        setState({ totalHoursToday: '0.00h' });
+                    }
+                }
+            }
+
+
+            // --- View Rendering Functions ---
+
+            function renderStatCard(title, value, icon, iconColor, bgColor) {
+                return `
+                    <div class="p-5 ${bgColor} rounded-xl shadow-md transition-all flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">${title}</p>
+                            <p class="text-3xl font-extrabold text-gray-900 dark:text-white mt-1 font-montserrat">${value}</p>
+                        </div>
+                        <i data-lucide="${icon}" class="w-8 h-8 ${iconColor} opacity-70"></i>
+                    </div>
+                `;
+            }
+
+            function renderDashboardView() {
+                return `
+                    <div class="space-y-8">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-black font-montserrat">Admin Dashboard</h2>
+
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            ${renderStatCard('Users Active', '245 / 300', 'trending-up', 'text-green-500', state.isInnovationMode ? 'bg-green-100 dark:bg-green-900' : 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Anomaly Rate', '1.2%', 'alert-triangle', 'text-red-500', state.isInnovationMode ? 'bg-red-100 dark:bg-red-900' : 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Overtime Hours', '98.5h', 'clock', 'text-yellow-500', state.isInnovationMode ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Geo-Accuracy', '99.8%', 'map-pin', 'text-blue-500', state.isInnovationMode ? 'bg-blue-100 dark:bg-blue-900' : 'bg-white dark:bg-gray-800')}
+                        </div>
+                        
+                        <!-- Charts Section -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Daily Attendance Chart -->
+                            <div class="lg:col-span-2 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg chart-container">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Daily Attendance Trend</h3>
+                                <div id="attendanceChart"></div>
+                            </div>
+                            
+                            <!-- Anomaly Breakdown -->
+                            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg chart-container">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Anomaly Breakdown</h3>
+                                <div id="anomalyChart"></div>
+                            </div>
+                        </div>
+
+                        <!-- Employee List -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Recent Clock-In/Outs</h3>
+                                <button data-action="showAnomalyModal" class="flex items-center text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 transition">
+                                    <i data-lucide="bell" class="w-4 h-4 mr-1"></i> View Anomalies
+                                </button>
+                            </div>
+                            ${renderEmployeeList()}
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderEmployeeList() {
+                const employees = [
+                    { name: 'Alice Johnson', time: '08:02 AM', status: 'Clocked In', badge: 'On-Time', badgeColor: 'bg-green-500' },
+                    { name: 'Bob Smith', time: '09:15 AM', status: 'Clocked In', badge: 'Anomaly', badgeColor: 'bg-red-500' },
+                    { name: 'Charlie Brown', time: '05:00 PM', status: 'Clocked Out', badge: 'On-Time', badgeColor: 'bg-green-500' },
+                    { name: 'Diana Prince', time: '08:00 AM', status: 'Clocked In', badge: 'On-Time', badgeColor: 'bg-green-500' },
+                ];
+
+                return `
+                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                        ${employees.map(emp => `
+                            <li class="py-3 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg px-2 transition">
+                                <div class="flex items-center">
+                                    <i data-lucide="user-circle" class="w-8 h-8 text-gray-400 dark:text-gray-500 mr-3"></i>
+                                    <div>
+                                        <p class="font-semibold text-gray-900 dark:text-white">${emp.name}</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">${emp.status} at ${emp.time}</p>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 text-xs font-semibold text-white rounded-full ${emp.badgeColor}">${emp.badge}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
+            }
+
+            function renderCharts() {
+                // ApexCharts configuration
+                const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+                const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+
+                // 1. Attendance Chart
+                const attendanceOptions = {
+                    series: [{
+                        name: 'Check-ins',
+                        data: [120, 150, 140, 180, 160, 200, 170]
+                    }, {
+                        name: 'Check-outs',
+                        data: [100, 130, 110, 160, 140, 180, 150]
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        toolbar: { show: false }
+                    },
+                    colors: [primaryColor, accentColor],
+                    plotOptions: { bar: { horizontal: false, columnWidth: '55%', endingShape: 'rounded' } },
+                    dataLabels: { enabled: false },
+                    stroke: { show: true, width: 2, colors: ['transparent'] },
+                    xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+                    yaxis: { title: { text: 'Employees' } },
+                    fill: { opacity: 1 },
+                    tooltip: { y: { formatter: function (val) { return val + " employees" } } }
+                };
+
+                // Check if the element exists before rendering
+                const attendanceChartEl = document.getElementById('attendanceChart');
+                if (attendanceChartEl) {
+                    new ApexCharts(attendanceChartEl, attendanceOptions).render();
+                }
+
+                // 2. Anomaly Chart (Donut)
+                const anomalyOptions = {
+                    series: [44, 55, 13],
+                    chart: {
+                        type: 'donut',
+                        height: 300,
+                    },
+                    labels: ['Time Deviation', 'Location Drift', 'Face Mismatch'],
+                    colors: ['#FFC107', '#E53935', '#2196F3'],
+                    responsive: [{
+                        breakpoint: 480,
+                        options: {
+                            chart: { width: 200 },
+                            legend: { position: 'bottom' }
+                        }
+                    }],
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            colors: state.isDarkMode ? '#E0E0E0' : '#333333'
+                        }
+                    }
+                };
+                
+                const anomalyChartEl = document.getElementById('anomalyChart');
+                if (anomalyChartEl) {
+                    new ApexCharts(anomalyChartEl, anomalyOptions).render();
+                }
+            }
+
+            // --- NEW: Individual Employee Info View ---
+            function renderEmployeeInfoView() {
+                return `
+                    <div class="space-y-8">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-blue font-montserrat">Employee Report: Alice Johnson</h2>
+                        <p class="text-gray-500 dark:text-gray-400">Employee ID: GM-7421 | Department: Engineering | Role: Senior Developer</p>
+                        
+                        <!-- Key Performance Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            ${renderStatCard('Avg. Weekly Hours', '41.5h', 'hourglass', 'text-indigo-500', 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Total Anomalies (LTD)', '3', 'bug', 'text-yellow-600', 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Recent OT Hours', '5.5h', 'zap', 'text-red-500', 'bg-white dark:bg-gray-800')}
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Weekly Hours Chart -->
+                            <div class="lg:col-span-2 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg chart-container">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Last 7 Days Hours Trend</h3>
+                                <div id="employeeHoursChart"></div>
+                            </div>
+
+                            <!-- Anomaly Log -->
+                            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Anomaly Log (Last 30 Days)</h3>
+                                <ul class="space-y-3">
+                                    <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between items-center">
+                                        <span><span class="font-medium text-red-500">Location Drift</span> (10/24)</span>
+                                        <i data-lucide="map-pin-off" class="w-4 h-4 text-red-500"></i>
+                                    </li>
+                                    <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between items-center">
+                                        <span><span class="font-medium text-yellow-500">Time Deviation</span> (10/18)</span>
+                                        <i data-lucide="clock" class="w-4 h-4 text-yellow-500"></i>
+                                    </li>
+                                    <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between items-center">
+                                        <span><span class="font-medium text-red-500">Location Drift</span> (10/11)</span>
+                                        <i data-lucide="map-pin-off" class="w-4 h-4 text-red-500"></i>
+                                    </li>
+                                </ul>
+                                <button class="mt-4 w-full py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm">
+                                    View Full History
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Payroll Details Button -->
+                        <div class="text-center pt-4">
+                            <button class="bg-[--color-primary] hover:bg-[--color-secondary] text-white font-semibold py-3 px-6 rounded-xl transition duration-200 shadow-md">
+                                Generate Payroll Preview Report
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderEmployeeCharts() {
+                const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+                
+                const employeeHoursOptions = {
+                    series: [{
+                        name: 'Hours Worked',
+                        data: [8.5, 9.0, 7.8, 8.2, 8.8, 5.0, 0.0] // Mock data: includes a half-day and a day off
+                    }],
+                    chart: {
+                        type: 'area',
+                        height: 300,
+                        toolbar: { show: false }
+                    },
+                    colors: [primaryColor],
+                    dataLabels: { enabled: false },
+                    stroke: { curve: 'smooth', width: 3 },
+                    xaxis: { 
+                        categories: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'] 
+                    },
+                    yaxis: { title: { text: 'Hours' } },
+                    tooltip: { y: { formatter: function (val) { return val.toFixed(1) + " hours" } } }
+                };
+
+                const employeeHoursChartEl = document.getElementById('employeeHoursChart');
+                if (employeeHoursChartEl) {
+                    new ApexCharts(employeeHoursChartEl, employeeHoursOptions).render();
+                }
+            }
+            // --- END: Individual Employee Info View ---
+
+
+            function renderPayrollView() {
+                return `
+                    <div class="space-y-8">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-blue font-montserrat">Payroll Management</h2>
+
+                        <!-- Summary Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            ${renderStatCard('Total Monthly Pay', 'Rs.1,250,000', 'banknote', 'text-green-600', 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Total Overtime Cost', 'Rs.12,500', 'trending-up', 'text-red-600', 'bg-white dark:bg-gray-800')}
+                            ${renderStatCard('Estimated Savings (AI)', 'Rs8,500', 'zap', 'text-blue-600', 'bg-white dark:bg-gray-800')}
+                        </div>
+
+                        <!-- Payroll List Table -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Pay Period: October 2025</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-700">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Employee</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Base Hours</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">OT Hours</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Net Pay</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700 text-gray-900 dark:text-gray-200">
+                                        <tr><td class="px-6 py-4 whitespace-nowrap">Jane Doe</td><td class="px-6 py-4 whitespace-nowrap">160</td><td class="px-6 py-4 whitespace-nowrap">4.5</td><td class="px-6 py-4 whitespace-nowrap">$4,550</td><td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Paid</span></td></tr>
+                                        <tr><td class="px-6 py-4 whitespace-nowrap">John Smith</td><td class="px-6 py-4 whitespace-nowrap">170</td><td class="px-6 py-4 whitespace-nowrap">10.0</td><td class="px-6 py-4 whitespace-nowrap">$6,100</td><td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Pending</span></td></tr>
+                                        <tr><td class="px-6 py-4 whitespace-nowrap">Emily Chen</td><td class="px-6 py-4 whitespace-nowrap">158</td><td class="px-6 py-4 whitespace-nowrap">0.0</td><td class="px-6 py-4 whitespace-nowrap">$3,800</td><td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Paid</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderReportsView() {
+                return `
+                    <div class="space-y-8">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-blue font-montserrat">System Reports</h2>
+
+                        <!-- Report Filters -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-wrap gap-4 items-center">
+                            <label class="text-gray-700 dark:text-gray-300 font-medium">Report Type:</label>
+                            <select class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                                <option>Total Overtime by Department</option>
+                                <option>Top 10 Anomaly Triggers</option>
+                                <option>Location Variance Report</option>
+                            </select>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 flex items-center">
+                                <i data-lucide="download" class="w-4 h-4 mr-2"></i> Download CSV
+                            </button>
+                        </div>
+                        
+                        <!-- Sample Report Visualization -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg chart-container">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Overtime by Department (Q3)</h3>
+                            <div id="overtimeChart"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderSettingsView() {
+                return `
+                    <div class="space-y-8">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-blue font-montserrat">Rewards Settings</h2>
+
+                        <!-- Security Settings -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg space-y-4">
+                            <h3 class="text-xl font-semibold border-b pb-2 mb-4 text-gray-900 dark:text-white dark:border-gray-700">Biometric & Geo-Fencing</h3>
+                            
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700 dark:text-gray-300">Facial Recognition Threshold (95%)</span>
+                                <input type="range" min="80" max="100" value="95" class="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                            </div>
+
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700 dark:text-gray-300">Geo-Fencing Radius (Meters)</span>
+                                <input type="number" value="50" class="w-20 p-1 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-right">
+                            </div>
+                        </div>
+
+                        <!-- User Management -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-semibold border-b pb-2 mb-4 text-gray-900 dark:text-white dark:border-gray-700">User & Role Management</h3>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">Manage employee roles and system access levels.</p>
+                            
+                            <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 flex items-center">
+                                <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i> Add New Employee
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function renderEmployeeView() {
+                // Determine Clock Action Text and Color
+                const actionText = state.isClockedIn ? 'Clock Out' : 'Clock In';
+                const actionColor = state.isClockedIn ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700';
+
+                let employeeViewHTML = `
+                    <div class="space-y-8 max-w-xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white font-montserrat text-center">My Attendance Panel</h2>
+                        
+                        <!-- Clock-in/out Card -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-all">
+                            <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">${actionText}</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Current Status: <span class="font-semibold text-lg ${state.isClockedIn ? 'text-green-500' : 'text-red-500'}">${state.isClockedIn ? 'Clocked In' : 'Clocked Out'}</span></p>
+                            
+                            <button id="clockActionBtn" data-action="clock" class="w-full py-4 text-xl font-bold text-white rounded-xl transition duration-200 ${actionColor} shadow-md hover:shadow-xl transform hover:scale-[1.01]">
+                                <i data-lucide="scan-face" class="w-8 h-8 inline-block mr-3"></i>
+                                ${actionText} Now
+                            </button>
+                            
+                            <p class="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center justify-center">
+                                <i data-lucide="camera" class="w-4 h-4 mr-2"></i>
+                                Verification requires camera access for facial recognition.
+                            </p>
+                            
+                            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Current Time: ${state.currentEmployeeTime}</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Total Hours Today: ${state.totalHoursToday}</p>
+                        </div>
+
+                        <!-- Recent History -->
+                        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Recent Activity</h3>
+                            <ul class="space-y-3">
+                                <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between"><span class="font-medium">2025-10-25</span> <span class="text-green-500">Clock In: 08:00 AM</span></li>
+                                <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between"><span class="font-medium">2025-10-25</span> <span class="text-red-500">Clock Out: 04:30 PM</span></li>
+                                <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between"><span class="font-medium">2025-10-24</span> <span class="text-green-500">Clock In: 08:05 AM</span></li>
+                                <li class="text-sm text-gray-700 dark:text-gray-300 flex justify-between"><span class="font-medium">2025-10-24</span> <span class="text-red-500">Clock Out: 05:05 PM</span></li>
+                            </ul>
+                            <p data-action="showAnomalyModal" data-modal-type="Location Drift" class="mt-4 text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:underline text-center">Report Location Issue</p>
+                        </div>
+                    </div>
+                `;
+
+                return employeeViewHTML;
+            }
+            
+            // --- Main Render Function ---
+            function renderUI() {
+                // 1. Dark Mode Toggle
+                if (state.isDarkMode) {
+                    dom.app.classList.add('dark');
+                    document.body.classList.add('dark');
+                } else {
+                    dom.app.classList.remove('dark');
+                    document.body.classList.remove('dark');
+                }
+                
+                // 2. Navigation Visibility
+                const isAdmin = state.view === 'admin';
+                dom.adminNav.classList.toggle('hidden', !isAdmin);
+                dom.employeeNav.classList.toggle('hidden', isAdmin);
+                dom.adminNavMobile.classList.toggle('hidden', !isAdmin);
+                dom.employeeNavMobile.classList.toggle('hidden', isAdmin);
+                dom.modeSwitchers.classList.toggle('hidden', !isAdmin);
+                
+                // 3. Page Content
+                let contentHTML = '';
+                switch (state.page) {
+                    case 'dashboard':
+                        contentHTML = renderDashboardView();
+                        break;
+                    case 'payroll':
+                        contentHTML = renderPayrollView();
+                        break;
+                    case 'reports':
+                        contentHTML = renderReportsView();
+                        break;
+                    case 'employeeInfo': // New Case
+                        contentHTML = renderEmployeeInfoView();
+                        break;
+                    case 'settings':
+                        contentHTML = renderSettingsView();
+                        break;
+                    case 'employee':
+                        contentHTML = renderEmployeeView();
+                        break;
+                    default:
+                        contentHTML = `<div class="p-8 text-center text-gray-500 dark:text-gray-400">Page not found for: ${state.page}</div>`;
+                }
+                dom.pageContent.innerHTML = contentHTML;
+
+                // 4. Update Active Nav Link
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-page') === state.page) {
+                        link.classList.add('active');
+                    }
+                });
+
+                // 5. Render Icons
+                renderIcons();
+                
+                // 6. Render Charts (Must be after content is added to DOM)
+                if (state.page === 'dashboard') {
+                    renderCharts();
+                }
+                if (state.page === 'employeeInfo') { // New Chart Render Call
+                    renderEmployeeCharts();
+                }
+
+                // 7. Re-map dynamic elements
+                dom.clockActionBtn = document.getElementById('clockActionBtn');
+                
+                // 8. Re-add event listeners for dynamic elements (if applicable)
+                if (dom.clockActionBtn) {
+                    dom.clockActionBtn.removeEventListener('click', handleClockAction);
+                    dom.clockActionBtn.addEventListener('click', handleClockAction);
+                }
+                
+                // 9. Close mobile menu after navigation
+                dom.mobileNavOverlay.classList.add('hidden');
+                dom.mobileNav.classList.add('-translate-x-full');
+            }
+
+
+            // --- Event Listeners Setup ---
+            
+            function addClickListeners() {
+                // Use event delegation for navigation and actions
+                dom.app.addEventListener('click', (e) => {
+                    // Check for nav links and general actions
+                    const target = e.target.closest('[data-page], [data-action], [data-view]');
+                    if (!target) return;
+
+                    const page = target.getAttribute('data-page');
+                    const action = target.getAttribute('data-action');
+                    const view = target.getAttribute('data-view');
+                    const modalType = target.getAttribute('data-modal-type');
+
+                    if (page) {
+                        setState({ page: page });
+                    } else if (view) {
+                        setState({ view: view, page: view === 'admin' ? 'dashboard' : 'employee' });
+                        if (view === 'employee') {
+                            startEmployeeViewTimer();
+                        } else {
+                            // Stop employee timer if switching away from employee view
+                            clearInterval(state.employeeTimer);
+                            state.employeeTimer = null;
+                        }
+                    } else if (action === 'showAnomalyModal') {
+                        showAnomalyModal(modalType);
+                    } else if (action === 'clock') {
+                        // Handled by specific event listener on the button
+                        return; 
+                    }
+                });
+            }
+            
+            // --- Initialization ---
+            document.addEventListener('DOMContentLoaded', () => {
+                // Add initial click listeners
+                addClickListeners();
+
+                // Mobile menu setup
+                dom.mobileMenuBtn.addEventListener('click', () => {
+                    dom.mobileNavOverlay.classList.remove('hidden');
+                    setTimeout(() => {
+                        dom.mobileNav.classList.remove('-translate-x-full');
+                    }, 10);
+                });
+                dom.closeMobileNavBtn.addEventListener('click', () => {
+                    dom.mobileNav.classList.add('-translate-x-full');
+                    setTimeout(() => {
+                        dom.mobileNavOverlay.classList.add('hidden');
+                    }, 300);
+                });
+                dom.mobileNavOverlay.addEventListener('click', (e) => {
+                    if (e.target === dom.mobileNavOverlay) {
+                        dom.mobileNav.classList.add('-translate-x-full');
+                        setTimeout(() => {
+                            dom.mobileNavOverlay.classList.add('hidden');
+                        }, 300);
+                    }
+                });
+
+                // Modal close button
+                dom.modalCloseBtn.addEventListener('click', closeModal);
+                // Modal confirm button
+                dom.modalConfirmBtn.addEventListener('click', handleClockAction);
+                
+                // Initial state setup (Admin view selected by default)
+                setState({ view: 'admin', page: 'dashboard' });
+
+                // Admin Toggles
+                dom.innovationToggle.addEventListener('change', (e) => {
+                    setState({ isInnovationMode: e.target.checked });
+                });
+                dom.darkModeToggle.addEventListener('click', () => {
+                    setState({ isDarkMode: !state.isDarkMode });
+                });
+                dom.darkModeToggleMobile.addEventListener('click', () => {
+                    setState({ isDarkMode: !state.isDarkMode });
+                });
+                
+                // Initial Render (will be done by the setState above)
+                // renderUI(); 
+            });
+
+        })();
+
+    </script>
+</body>
+</html>

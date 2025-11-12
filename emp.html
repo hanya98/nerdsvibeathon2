@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TruInx Employee Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font and general body appearance */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7fa;
+        }
+        /* Custom style for the large "Camera" simulation box */
+        .camera-feed {
+            min-height: 400px;
+            background: linear-gradient(135deg, #1f2937, #374151); /* Dark gradient for a sleek look */
+            border: 4px solid #10b981; /* Green border to indicate active device */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        /* Progress bar animation simulation */
+        #progress-bar {
+            transition: width 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Firebase Imports for Context (Required for Canvas Environment) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+
+        if (firebaseConfig) {
+            try {
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Set Firestore log level for debugging
+                setLogLevel('debug');
+
+                // Sign in with custom token or anonymously
+                if (initialAuthToken) {
+                    signInWithCustomToken(auth, initialAuthToken).catch(error => {
+                        console.error("Firebase Custom Token Sign-In Failed:", error);
+                        signInAnonymously(auth); // Fallback to anonymous sign-in
+                    });
+                } else {
+                    signInAnonymously(auth);
+                }
+
+            } catch (error) {
+                console.error("Firebase Initialization Failed:", error);
+            }
+        } else {
+            console.warn("Firebase configuration is missing. Running in mock data mode.");
+        }
+    </script>
+
+    <div id="app" class="min-h-screen p-4 md:p-8">
+
+        <!-- 1. The Clock-In/Clock-Out Screen -->
+        <div id="clock-in-screen" class="hidden max-w-2xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-extrabold text-gray-800">Tru<span class="text-emerald-500">Inx</span> Access</h1>
+                <p id="welcome-message" class="text-xl mt-2 text-gray-600">Hello, Alice</p>
+            </header>
+
+            <!-- Live Camera Feed (Simulated) -->
+            <div class="camera-feed rounded-xl mb-6 shadow-inner">
+                <p class="text-white text-3xl font-semibold mb-4">Live Camera Feed</p>
+                <div id="status-text" class="text-2xl font-bold text-red-400 mb-6">You are currently Clocked Out.</div>
+
+                <p id="instruction-text" class="text-lg text-gray-200 mb-8 max-w-xs">
+                    To Clock In, please hold a 'Thumbs Up' 👍 or 'Wave' 🖐️ or nod to the camera.
+                </p>
+
+                <!-- Verification Progress Bar -->
+                <div id="progress-container" class="w-2/3 md:w-1/2 h-2 bg-gray-600 rounded-full overflow-hidden mb-4 hidden">
+                    <div id="progress-bar" class="h-full bg-emerald-500" style="width: 0;"></div>
+                </div>
+                <p id="progress-message" class="text-sm text-gray-400 mb-6 hidden">Detecting Gesture...</p>
+
+                <!-- Simulation Button -->
+                <button id="simulate-gesture-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 transform active:scale-95">
+                    Simulate Gesture Clock In
+                </button>
+            </div>
+
+            <!-- Geolocation/Device Check -->
+            <div class="text-center text-sm text-gray-500 flex justify-center items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2 text-blue-500">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+                <span id="location-text">Location Confirmed: Headquarters (Geo-fence)</span>
+            </div>
+        </div>
+
+        <!-- 2. The Main Dashboard View -->
+        <div id="main-dashboard" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Left Column (Daily Focus & Time Tracking) - Fixed Width on Desktop -->
+                <div class="lg:col-span-1 space-y-6">
+
+                    <!-- Greeting & Quick Status Card -->
+                    <div class="bg-white p-6 rounded-xl shadow-xl">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <img id="profile-photo" src="https://placehold.co/60x60/10b981/ffffff?text=AJ" alt="Profile" class="rounded-full border-2 border-emerald-500">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800" id="greeting-title">Good Morning, John!</h2>
+                                <p class="text-sm text-gray-500">Employee ID: <span id="user-id">Loading ID...</span></p>
+                            </div>
+                        </div>
+
+                        <div class="text-center py-4 border-t border-b border-gray-100 mb-4">
+                            <div class="text-5xl font-extrabold text-emerald-600" id="current-time">10:56:00 AM</div>
+                            <p class="text-xl font-semibold text-gray-700 mt-2">Time Worked Today</p>
+                            <p class="text-4xl font-extrabold text-gray-800 mt-1" id="time-worked">00:00:00</p>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex justify-between text-sm font-medium text-gray-600">
+                                <span>Clock In:</span>
+                                <span id="clock-in-time" class="text-gray-800 font-semibold">--:-- AM</span>
+                            </div>
+                            <button id="toggle-clock-out-btn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 transform active:scale-95 flex items-center justify-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                                </svg>
+                                <span>Clock Out</span>
+                            </button>
+                            <button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 transform active:scale-95 flex items-center justify-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                                <span>Start Break</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Time Off Balance -->
+                    <div class="bg-white p-6 rounded-xl shadow-xl">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex justify-between items-center">
+                            Time Off Balance
+                            <a href="#" class="text-sm text-emerald-500 hover:text-emerald-600">Request PTO</a>
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Vacation Days:</span>
+                                <span class="text-xl font-bold text-blue-600">15.0 days</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Sick Leave:</span>
+                                <span class="text-xl font-bold text-orange-600">5.0 days</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column (Schedule, Announcements, Tasks) - Fluid Width -->
+                <div class="lg:col-span-2 space-y-6">
+
+                    <!-- Section 2: Work Schedule & Attendance -->
+                    <div class="bg-white p-6 rounded-xl shadow-xl">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Today's Schedule & Attendance</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Shift</p>
+                                <p class="text-lg font-semibold text-gray-800">10:00 AM - 6:30 PM</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Current Status</p>
+                                <p id="current-status-badge" class="inline-flex items-center rounded-md bg-emerald-500/10 px-3 py-1 text-base font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+                                    Clocked In
+                                </p>
+                            </div>
+                        </div>
+
+                        <h4 class="text-lg font-semibold text-gray-700 mt-6 mb-3">Upcoming Events</h4>
+                        <ul class="space-y-3">
+                            <li class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 rounded-full bg-indigo-500 mr-3"></div>
+                                <div>
+                                    <p class="font-medium">Team Stand-up</p>
+                                    <p class="text-sm text-gray-500">11:30 AM (Conference Room B)</p>
+                                </div>
+                            </li>
+                            <li class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 rounded-full bg-blue-500 mr-3"></div>
+                                <div>
+                                    <p class="font-medium">Client Review Prep</p>
+                                    <p class="text-sm text-gray-500">2:00 PM - 3:30 PM (Virtual)</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Section 3: Announcements & Notifications -->
+                    <div class="bg-white p-6 rounded-xl shadow-xl">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Announcements & Notifications</h3>
+                        <ul class="space-y-4">
+                            <li class="border-l-4 border-orange-400 pl-4">
+                                <p class="font-semibold text-gray-800">Action Required: PTO Request Pending</p>
+                                <p class="text-sm text-gray-600">Your request for Nov 30th needs manager approval. Check status now.</p>
+                            </li>
+                            <li class="border-l-4 border-blue-400 pl-4">
+                                <p class="font-semibold text-gray-800">Company News: New PTO Policy</p>
+                                <p class="text-sm text-gray-600">The updated PTO policy is effective December 1st. Read the full memo.</p>
+                            </li>
+                            <li class="border-l-4 border-green-400 pl-4">
+                                <p class="font-semibold text-gray-800">Mandatory Training Reminder</p>
+                                <p class="text-sm text-gray-600">Complete your mandatory security training by EOD Friday.</p>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Modal for Success/Error Messages (Replaces alert()) -->
+        <div id="message-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full text-center transform scale-100 transition-transform duration-300" id="modal-content">
+                <div id="modal-icon" class="text-4xl mb-4"></div>
+                <h3 id="modal-title" class="text-xl font-bold mb-2 text-gray-800"></h3>
+                <p id="modal-body" class="text-gray-600 mb-4"></p>
+                <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Close
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const DOM = {
+            app: document.getElementById('app'),
+            clockInScreen: document.getElementById('clock-in-screen'),
+            mainDashboard: document.getElementById('main-dashboard'),
+            // Clock-In Elements
+            welcomeMessage: document.getElementById('welcome-message'),
+            statusText: document.getElementById('status-text'),
+            instructionText: document.getElementById('instruction-text'),
+            simulateGestureBtn: document.getElementById('simulate-gesture-btn'),
+            progressContainer: document.getElementById('progress-container'),
+            progressBar: document.getElementById('progress-bar'),
+            progressMessage: document.getElementById('progress-message'),
+            // Dashboard Elements
+            greetingTitle: document.getElementById('greeting-title'),
+            currentTimeDisplay: document.getElementById('current-time'),
+            timeWorkedDisplay: document.getElementById('time-worked'),
+            clockInTimeDisplay: document.getElementById('clock-in-time'),
+            toggleClockOutBtn: document.getElementById('toggle-clock-out-btn'),
+            currentStatusBadge: document.getElementById('current-status-badge'),
+            userIdDisplay: document.getElementById('user-id'),
+            // Modal Elements
+            messageModal: document.getElementById('message-modal'),
+            modalIcon: document.getElementById('modal-icon'),
+            modalTitle: document.getElementById('modal-title'),
+            modalBody: document.getElementById('modal-body'),
+        };
+
+        // --- Global State and Mock Data ---
+        let state = {
+            isClockedIn: false,
+            lastClockInTime: null,
+            employeeName: "Alice Johnson",
+            employeeId: "TRUINX-8493",
+            timeWorkedInterval: null,
+        };
+
+        // --- Utility Functions ---
+
+        /**
+         * Shows a custom modal instead of the browser's alert()
+         * @param {string} title - Modal title
+         * @param {string} body - Modal message body
+         * @param {string} icon - Emoji/text for the icon (e.g., '✅', '❌')
+         */
+        const showModal = (title, body, icon) => {
+            DOM.modalIcon.textContent = icon;
+            DOM.modalTitle.textContent = title;
+            DOM.modalBody.textContent = body;
+            DOM.messageModal.classList.remove('hidden');
+        };
+
+        /**
+         * Formats a Date object to "HH:MM:SS AM/PM"
+         * @param {Date} date - The date object to format
+         * @returns {string} Formatted time string
+         */
+        const formatTime = (date) => {
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+        };
+
+        /**
+         * Formats milliseconds into "HH:MM:SS" string
+         * @param {number} ms - Milliseconds
+         * @returns {string} Formatted duration string
+         */
+        const formatDuration = (ms) => {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return [hours, minutes, seconds]
+                .map(unit => unit.toString().padStart(2, '0'))
+                .join(':');
+        };
+
+        /**
+         * Calculates and updates the time worked display.
+         */
+        const updateTimeWorked = () => {
+            if (state.isClockedIn && state.lastClockInTime) {
+                const elapsedMs = Date.now() - state.lastClockInTime.getTime();
+                DOM.timeWorkedDisplay.textContent = formatDuration(elapsedMs);
+            }
+        };
+
+        /**
+         * Main interval function to update the current time.
+         */
+        const updateCurrentTime = () => {
+            DOM.currentTimeDisplay.textContent = formatTime(new Date());
+            updateTimeWorked();
+        };
+
+        // --- Core Logic ---
+
+        /**
+         * Renders the correct screen based on the clock state.
+         */
+        const render = () => {
+            // Update personalized messages
+            DOM.welcomeMessage.textContent = `Hello, ${state.employeeName}!`;
+            DOM.greetingTitle.textContent = `Good ${new Date().getHours() < 12 ? 'Morning' : 'Afternoon'}, ${state.employeeName.split(' ')[0]}!`;
+            DOM.userIdDisplay.textContent = state.employeeId;
+
+            if (state.isClockedIn) {
+                // Show Dashboard
+                DOM.clockInScreen.classList.add('hidden');
+                DOM.mainDashboard.classList.remove('hidden');
+
+                // Update Dashboard specifics
+                DOM.clockInTimeDisplay.textContent = formatTime(state.lastClockInTime);
+                DOM.currentStatusBadge.textContent = "Clocked In";
+                DOM.currentStatusBadge.classList.remove('bg-red-500/10', 'text-red-700', 'ring-red-500/20');
+                DOM.currentStatusBadge.classList.add('bg-emerald-500/10', 'text-emerald-700', 'ring-emerald-500/20');
+                DOM.toggleClockOutBtn.textContent = "Clock Out";
+                DOM.toggleClockOutBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+                DOM.toggleClockOutBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+
+                // Start the time worked timer
+                if (!state.timeWorkedInterval) {
+                    state.timeWorkedInterval = setInterval(updateTimeWorked, 1000);
+                }
+
+            } else {
+                // Show Clock-In Screen
+                DOM.clockInScreen.classList.remove('hidden');
+                DOM.mainDashboard.classList.add('hidden');
+
+                // Update Clock-In Screen specifics
+                DOM.statusText.textContent = "You are currently Clocked Out.";
+                DOM.statusText.classList.remove('text-emerald-400');
+                DOM.statusText.classList.add('text-red-400');
+                DOM.instructionText.textContent = "To Clock In, please hold a 'Thumbs Up' 👍 or 'Wave' 🖐️ to the camera.";
+                DOM.simulateGestureBtn.textContent = "Simulate Gesture Clock In";
+                DOM.simulateGestureBtn.onclick = simulateGestureClockIn;
+                DOM.toggleClockOutBtn.textContent = "Clock In"; // Fallback button on dashboard
+                DOM.toggleClockOutBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                DOM.toggleClockOutBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
+
+                // Clear the time worked timer
+                if (state.timeWorkedInterval) {
+                    clearInterval(state.timeWorkedInterval);
+                    state.timeWorkedInterval = null;
+                }
+            }
+        };
+
+        /**
+         * Simulates the biometric gesture detection and API call.
+         */
+        const simulateGestureClockIn = () => {
+            DOM.simulateGestureBtn.disabled = true;
+            DOM.simulateGestureBtn.textContent = "Scanning...";
+            DOM.progressContainer.classList.remove('hidden');
+            DOM.progressMessage.classList.remove('hidden');
+
+            let progress = 0;
+            const totalDuration = 3000; // 3 seconds
+            const intervalDuration = 50; // Update every 50ms
+            const steps = totalDuration / intervalDuration;
+            let currentStep = 0;
+
+            const scanInterval = setInterval(() => {
+                currentStep++;
+                progress = (currentStep / steps) * 100;
+                DOM.progressBar.style.width = `${progress}%`;
+
+                if (progress >= 100) {
+                    clearInterval(scanInterval);
+
+                    // --- Final Clock In Action ---
+                    state.isClockedIn = true;
+                    state.lastClockInTime = new Date();
+                    render(); // Switch to dashboard
+
+                    // Reset UI for next time
+                    DOM.simulateGestureBtn.disabled = false;
+                    DOM.progressContainer.classList.add('hidden');
+                    DOM.progressMessage.classList.add('hidden');
+                    DOM.progressBar.style.width = '0%';
+                    
+                    showModal(
+                        "Clock In Successful!",
+                        `You are now Clocked In at ${formatTime(state.lastClockInTime)}. Welcome to your shift!`,
+                        '✅'
+                    );
+                }
+            }, intervalDuration);
+        };
+
+        /**
+         * Handles the final Clock Out action from the dashboard.
+         */
+        const handleClockOut = () => {
+            const clockOutTime = new Date();
+            const totalTimeWorked = formatDuration(clockOutTime.getTime() - state.lastClockInTime.getTime());
+
+            state.isClockedIn = false;
+            state.lastClockInTime = null;
+            render(); // Switch back to clock-in screen
+
+            showModal(
+                "Clock Out Confirmed!",
+                `Clock Out Time: ${formatTime(clockOutTime)}. Total time logged today: ${totalTimeWorked}. Have a great day!`,
+                '👋'
+            );
+        };
+
+
+        // --- Event Listeners and Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial call to set up the environment and display the first screen
+            render();
+            // Start the clock display update
+            setInterval(updateCurrentTime, 1000);
+
+            // Attach event listener to the primary clock-in button
+            DOM.simulateGestureBtn.onclick = simulateGestureClockIn;
+            // Attach event listener to the dashboard clock-out button
+            DOM.toggleClockOutBtn.addEventListener('click', () => {
+                if (state.isClockedIn) {
+                    handleClockOut();
+                } else {
+                    // This scenario should not happen if state is correct, but handles a fallback
+                    simulateGestureClockIn();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
